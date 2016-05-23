@@ -1,0 +1,37 @@
+<?php
+
+/**
+ * @file
+ * Code for installing mini_endpoint module.
+ */
+
+function mini_endpoint_schema() {
+
+  $schema['slack_times'] = array(
+    'description' => 'To store slack ids',
+    'fields' => array(
+      'sid' => array(
+       'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'The stream id.',        
+      ),
+      'status' => array(
+        'type' => 'varchar',
+        'length' => '255',
+        'description' => 'The status title of a stream.',
+      ),
+      'snum' => array(
+        'type' => 'int',
+        'size' => 'big',
+        'not null' => TRUE,
+        'default' => 0,        
+        'description' => 'The number of the current stream',
+      ),
+    ),
+    'primary key' => array('sid'),
+  );
+
+  return $schema;
+
+}

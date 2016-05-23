@@ -1,0 +1,94 @@
+<?php
+
+/**
+ * @file
+ * Code for the mini_endpoint module.
+ */
+
+
+/**
+ * Implementation of hook_cronapi
+ */
+function mini_endpoint_cronapi($op, $job = NULL) {
+
+  $items['mini_endpoint_twitch_cron'] = array(
+    'description' => 'Fetch Twitch Every Minute',
+    'rule' => '* * * * *', // Every 2 hours
+    // Note: i don't need to define a callback
+  );
+
+  return $items;
+}
+
+function mini_endpoint_twitch_cron() {
+  // Add in account names of your own that you want to track below and seperate them via comma.
+  $twitchURL = 'https://api.twitch.tv/kraken/streams?channel=2old2play,Doodirock,xHoplite,watchtowergames,lbsutke,STYLES_monster,nawnek';
+  $options = array(
+    'method' => 'GET',
+    'timeout' => 15,
+    'headers' => array('Content-Type' => 'application/json'),
+  );
+  $request1 = drupal_http_request($twitchURL, $options);
+  $getTwitch = drupal_json_decode($request1->data);
+
+  $game = $getTwitch['streams']['0']['game'];
+  $streamid = $getTwitch['streams']['0']['_id'];  
+  $person = $getTwitch['streams']['0']['channel']['display_name'];
+  $small = $getTwitch['streams']['0']['channel']['logo'];
+
+  $pulldb = get_slack_id();
+  $savedId = (int)$pulldb['0']->snum;
+
+  if ($savedId === $streamid || $streamid === NULL) {
+    return;
+  } else {
+    //put it into db
+    $sid = db_insert('slack_times')
+      ->fields(array(
+        'snum' => $streamid,
+        'status' => $person,
+      ))
+    ->execute();
+
+    $arr = array('channel' => '#general', 'unfurl_links' => true, 'text' => $person.'is now streaming '.$game.' on twitch!', 'attachments' => array(array('color' => '#6441a5', 'title' => 'Click here to watch '.$person.'', 'title_link' => 'http://www.twitch.tv/'.$person.'', 'thumb_url' => $small)));
+    $content = drupal_json_encode($arr);
+
+    $slackURL = '';  // Add in your Slack URL here in order to post it to the channel
+
+    $curl = curl_init($slackURL);
+    curl_setopt($curl, CURLOPT_HEADER, false);
+    curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($curl, CURLOPT_HTTPHEADER,
+            array("Content-type: application/json"));
+    curl_setopt($curl, CURLOPT_POST, true);
+    curl_setopt($curl, CURLOPT_POSTFIELDS, $content);
+
+    $json_response = curl_exec($curl);
+
+    $status = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+
+    curl_close($curl);    
+    // return json_decode($json_response, true);
+  }
+}
+
+/**
+ * Get database info from slack table
+ */
+function get_slack_id() {
+
+
+  $query = db_select('slack_times');
+
+  $query->addField('slack_times', 'snum');
+  $query->addField('slack_times', 'status');
+
+  $query->orderBy('sid', 'DESC');
+  $query->range(0, 1);
+
+  // Run the query and get the results as an array of objects
+  $data = $query->execute()->fetchAll();
+
+  return $data;
+
+}

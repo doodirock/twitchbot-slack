@@ -1,0 +1,9 @@
+core = "7.x"
+name = "Mini Endpoint"
+description = "Used for slack to make sure we stop spam from webhook"
+package = "SLACK"
+project = "mini_endpoint"
+dependencies[] = elysia_cron:elysia_cron
+version = "7.x-0.1"
+
+stylesheets[all][] = css/lfg.css
